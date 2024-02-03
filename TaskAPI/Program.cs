@@ -5,7 +5,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.AspNetCore;
 using TaskAPI.Data;
+using TaskAPI.Filters;
 using TaskAPI.Repositories;
 using TaskAPI.Repositories.Interfaces;
 
@@ -21,19 +24,21 @@ namespace TaskAPI
                     .SetBasePath(AppContext.BaseDirectory)
                     .AddJsonFile($"appsettings.json").Build();
 
-           /* Log.Logger = new LoggerConfiguration()
-            .WriteTo.File("logs/myapp-.txt", rollingInterval: RollingInterval.Day) // Добавляем логирование в файл
-            .CreateLogger();*/
+            Log.Logger = new LoggerConfiguration()
+           .WriteTo.File("logs/myapp-.txt",
+               rollingInterval: RollingInterval.Day,
+               restrictedToMinimumLevel: (Serilog.Events.LogEventLevel)LogLevel.Error)
+            .CreateLogger();
 
+            builder.Logging.AddSerilog();
 
             builder.Services.AddControllers();
             builder.Services.AddDbContext<TaskDbContext>(options =>
                 options.UseSqlite(configuration.GetConnectionString("SQLiteConnection")));
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+            builder.Services.AddSingleton<AuthorizationFilter>();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-
-            
 
 
             var app = builder.Build();

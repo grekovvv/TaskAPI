@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using TaskAPI.Filters;
 using TaskAPI.Model;
 using TaskAPI.Repositories.Interfaces;
 
@@ -6,12 +7,15 @@ namespace TaskAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorization]
     public class TasksController : ControllerBase
     {
         private readonly ITaskRepository _taskRepository;
+        private readonly ILogger<TasksController> _logger;
 
-        public TasksController(ITaskRepository taskRepository)
+        public TasksController(ITaskRepository taskRepository, ILogger<TasksController> logger)
         {
+            _logger = logger;
             _taskRepository = taskRepository;
         }
 
@@ -24,7 +28,7 @@ namespace TaskAPI.Controllers
             }
             catch (Exception ex)
             {
-
+                _logger.LogError(ex, "An error occurred");
                 return StatusCode(500, "Internal Server Error");
             }
             
@@ -33,50 +37,85 @@ namespace TaskAPI.Controllers
         [HttpGet("{id}")]
         public ActionResult<MyTask> GetMyTask(int id)
         {
-            var task = _taskRepository.GetTaskById(id);
-            if (task == null)
-            {
-                return NotFound();
+            try
+            { 
+                var task = _taskRepository.GetTaskById(id);
+                if (task == null)
+                {
+                    return NotFound();
+                }
+                return Ok(task);
+                
             }
-            return Ok(task);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred");
+                return StatusCode(500, "Internal Server Error");
+            }
+
         }
 
         [HttpPost]
         public ActionResult<MyTask> CreateMyTask(MyTask task)
         {
-            var createdTask = _taskRepository.AddTask(task);
-            return CreatedAtAction(nameof(GetMyTask), new { id = createdTask.Id }, createdTask);
+            try
+            {
+                var createdTask = _taskRepository.AddTask(task);
+                return CreatedAtAction(nameof(GetMyTask), new { id = createdTask.Id }, createdTask);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred");
+                return StatusCode(500, "Internal Server Error");
+            }
         }
 
         [HttpPut("{id}")]
         public IActionResult UpdateMyTask(int id, MyTask task)
         {
-            if (id != task.Id)
+            try
             {
-                return BadRequest();
-            }
+                if (id != task.Id)
+                {
+                    return BadRequest();
+                }
 
-            var existingTask = _taskRepository.GetTaskById(id);
-            if (existingTask == null)
+                var existingTask = _taskRepository.GetTaskById(id);
+                if (existingTask == null)
+                {
+                    return NotFound();
+                }
+
+                _taskRepository.UpdateTask(task);
+                return NoContent();
+            }
+            catch (Exception ex)
             {
-                return NotFound();
+                _logger.LogError(ex, "An error occurred");
+                return StatusCode(500, "Internal Server Error");
             }
-
-            _taskRepository.UpdateTask(task);
-            return NoContent();
+            
         }
 
         [HttpDelete("{id}")]
         public IActionResult DeleteMyTask(int id)
         {
-            var existingTask = _taskRepository.GetTaskById(id);
-            if (existingTask == null)
+            try
             {
-                return NotFound();
-            }
+                var existingTask = _taskRepository.GetTaskById(id);
+                if (existingTask == null)
+                {
+                    return NotFound();
+                }
 
-            _taskRepository.DeleteTask(id);
-            return NoContent();
+                _taskRepository.DeleteTask(id);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred");
+                return StatusCode(500, "Internal Server Error");
+            }
         }
     }
 }
